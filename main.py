@@ -1,181 +1,110 @@
-import os
-import time
-import math
-from typing import List
+import csv
+import random
+from xml.dom import minidom
 
-# --- 0. Последовательность чисел (Чтение из файла sequence.txt) ---
-def get_sequence_data() -> List[float]:
-    """
-    Считывает последовательность чисел из локального файла 'sequence.txt'.
-    """
-    numbers = []
+# Пути к файлам (измените названия, если они отличаются)
+CSV_FILE = 'books.csv'  
+XML_FILE = 'currency.xml'
+
+def solve_csv_tasks():
+    print("--- ЗАДАНИЯ ПО CSV ---")
+    
+    # 1. Считаем количество записей с названием длиннее 30 символов
+    # 2. Поиск по автору с ценой до 200 рублей
+    # 3. Список всех издательств без повторений (Допзадание)
+    # 4. Топ-20 популярных книг (Допзадание)
+    
+    count_long_titles = 0
+    search_results = []
+    all_books = []
+    publishers = set()
+    
+    author_to_search = input("Введите имя автора для поиска: ").strip().lower()
     
     try:
-        with open('sequence.txt', 'r') as file:
-            data_text = file.read()
+        # Обычно файлы этого задания в кодировке cp1251 (Windows-1251)
+        with open(CSV_FILE, 'r', encoding='cp1251') as f:
+            # Разделитель в этих файлах обычно ';'
+            reader = csv.DictReader(f, delimiter=';')
             
-            for item in data_text.split():
+            for row in reader:
+                all_books.append(row)
+                
+                # Задание 1: Длина названия > 30
+                title = row.get('Название', '')
+                if len(title) > 30:
+                    count_long_titles += 1
+                
+                # Задание 2: Поиск автора + цена до 200 руб (Вариант 4)
+                # Важно: заменяем запятую на точку для перевода в число, если есть
                 try:
-                    numbers.append(float(item))
+                    price = float(row.get('Цена', '0').replace(',', '.'))
+                    author = row.get('Автор', '').lower()
+                    if author_to_search in author and price <= 200:
+                        search_results.append(row.get('Название'))
                 except ValueError:
-                    continue
-                    
+                    pass
+                
+                # Допзадание 1: Издательства без повторений
+                pub = row.get('Издательство', '')
+                if pub:
+                    publishers.add(pub)
+
+        # Вывод результатов задания 1
+        print(f"1. Книг с названием длиннее 30 символов: {count_long_titles}")
+
+        # Вывод результатов задания 2
+        print(f"2. Результаты поиска автора '{author_to_search}' (до 200 руб):")
+        if search_results:
+            for title in search_results:
+                print(f"   - {title}")
+        else:
+            print("   Ничего не найдено.")
+
+        # Задание 3: Библиографические ссылки (20 случайных)
+        # Формат: <автор>. <название> - <год>
+        if len(all_books) >= 20:
+            random_books = random.sample(all_books, 20)
+            with open('bibliography.txt', 'w', encoding='utf-8') as bib_file:
+                for i, book in enumerate(random_books, 1):
+                    line = f"{i}. {book.get('Автор')}. {book.get('Название')} - {book.get('Год')}\n"
+                    bib_file.write(line)
+            print("3. Файл bibliography.txt успешно создан.")
+
+        # Допзадание 1: Издательства
+        print(f"4. Всего уникальных издательств: {len(publishers)}")
+
+        # Допзадание 2: Самые популярные 20 книг (по полю 'Кол-во выдач')
+        print("5. Топ-20 популярных книг:")
+        # Сортируем по убыванию выдач
+        top_20 = sorted(all_books, key=lambda x: int(x.get('Кол-во выдач', 0)), reverse=True)[:20]
+        for i, book in enumerate(top_20, 1):
+            print(f"   {i}. {book.get('Название')} (Выдач: {book.get('Кол-во выдач')})")
+
     except FileNotFoundError:
-        print("❌ Ошибка: Файл 'sequence.txt' не найден.")
-        print("Пожалуйста, создайте файл и поместите его в ту же папку, что и скрипт.")
-        return []
+        print(f"Ошибка: Файл {CSV_FILE} не найден.")
+
+def solve_xml_task():
+    print("\n--- ЗАДАНИЕ ПО XML (Вариант 4) ---")
+    # Вариант 4: Словарь "NumCode - CharCode"
+    
+    try:
+        doc = minidom.parse(XML_FILE)
+        valutes = doc.getElementsByTagName("Valute")
+        
+        currency_dict = {}
+        
+        for valute in valutes:
+            num_code = valute.getElementsByTagName("NumCode")[0].firstChild.data
+            char_code = valute.getElementsByTagName("CharCode")[0].firstChild.data
+            currency_dict[num_code] = char_code
+            
+        print("Словарь NumCode - CharCode:")
+        print(currency_dict)
+        
     except Exception as e:
-        print(f"❌ Произошла ошибка при чтении файла: {e}")
-        return []
-        
-    return numbers
-
-
-# --- 1. Флаг Польши ---
-def draw_polish_flag():
-    print("## 🇵🇱 1. Флаг Польши (Бело-Красный)")
-    
-    WHITE_BG_RED_TEXT = '\033[47m\033[31m'
-    RED_BG_WHITE_TEXT = '\033[41m\033[37m'
-    RESET = '\033[0m'
-    
-    block = '██' 
-    width = 15 
-    
-    for _ in range(3):
-        print(f"{WHITE_BG_RED_TEXT}{block * width}{RESET}")
-        
-    for _ in range(3):
-        print(f"{RED_BG_WHITE_TEXT}{block * width}{RESET}")
-
-
-# --- 2. Повторяющийся узор 'd' (исправленная версия с ASCII) ---
-def draw_d_pattern():
-    print("\n" + "-" * 30)
-    print("## 🔡 2. Повторяющийся узор 'd'")
-    
-    # Используем обычные символы ASCII вместо блоков
-    pattern_lines = [
-        " ######## ",
-        "    ##    ",
-        " ######## ",
-        "   ##  ## ",
-        " ######## "
-    ]
-    
-    for line in pattern_lines:
-        print((line + "   ") * 5)
-
-
-# --- 3. График функции y = sqrt(x) ---
-def plot_sqrt_function():
-    print("\n" + "-" * 30)
-    print(f"## 📈 3. График функции $y = \\sqrt{{x}}$ (1-я четверть, высота $\\ge 9$ строк)")
-    
-    max_x = 81
-    max_y_to_plot = 9 
-    
-    points = set()
-    for x in range(max_x + 1):
-        y = math.sqrt(x)
-        if round(y) <= max_y_to_plot:
-            points.add((x, round(y)))
-    
-    for current_y in range(max_y_to_plot, -1, -1):
-        line = f"{current_y:2}|" 
-        
-        for current_x in range(max_x + 1):
-            if (current_x, current_y) in points:
-                line += "#"
-            elif current_y == 0 and current_x != 0:
-                 line += "-"
-            else:
-                line += " "
-
-        print(line)
-    
-    x_labels = "   " + "".join([str(x)[-1] if x % 10 == 0 else " " for x in range(max_x + 1)])
-    print(x_labels)
-
-
-# --- 4. Диаграмма сравнения средних по модулю ---
-def analyze_and_plot_averages():
-    print("\n" + "-" * 30)
-    print("## 📊 4. Диаграмма сравнения среднего по модулю")
-    
-    numbers = get_sequence_data()
-    total_count = len(numbers)
-    
-    if total_count < 250:
-        print(f"Внимание: Найдено только {total_count} чисел. Сравнение будет выполнено для двух половин ({total_count//2}/{total_count - total_count//2}).")
-        split_index = total_count // 2
-    else:
-        split_index = 125
-
-    group1 = numbers[:split_index]
-    group2 = numbers[split_index:split_index*2]
-
-    avg_abs1 = sum(abs(n) for n in group1) / len(group1) if len(group1) > 0 else 0
-    avg_abs2 = sum(abs(n) for n in group2) / len(group2) if len(group2) > 0 else 0
-    
-    max_avg = max(avg_abs1, avg_abs2, 1)
-    
-    BAR_COLOR1 = '\033[46m'
-    BAR_COLOR2 = '\033[45m'
-    RESET = '\033[0m'
-    max_bar_length = 50
-    
-    bar_length1 = int((avg_abs1 / max_avg) * max_bar_length)
-    bar_length2 = int((avg_abs2 / max_avg) * max_bar_length)
-
-    print(f"Первая группа ({len(group1)} чисел): Среднее по модулю: {avg_abs1:.2f}")
-    print(f"Вторая группа ({len(group2)} чисел): Среднее по модулю: {avg_abs2:.2f}")
-    
-    bar1 = f"{BAR_COLOR1}{' ' * bar_length1}{RESET}"
-    print(f"Группа 1: {bar1}")
-    
-    bar2 = f"{BAR_COLOR2}{' ' * bar_length2}{RESET}"
-    print(f"Группа 2: {bar2}")
-
-
-# --- 5. Допзадание: Анимация ---
-def clear_console():
-    try:
-        os.system('cls' if os.name == 'nt' else 'clear')
-    except Exception:
-        print("\n" * 50) 
-
-def simple_animation(frames=2, repetitions=5):
-    print("\n" + "-" * 30)
-    print("## 🎬 Допзадание: Анимация")
-    print("Анимация запустится через 2 секунды. Нажмите Ctrl+C для остановки.")
-    time.sleep(2)
-    
-    frame1 = "\n" * 3 + "        (o.o)" 
-    frame2 = "\n" * 4 + "        (O_O)"
-    animation_frames = [frame1, frame2]
-    
-    try:
-        for _ in range(repetitions):
-            for i in range(frames):
-                clear_console()
-                print("--- Анимация ---")
-                print(animation_frames[i % len(animation_frames)])
-                time.sleep(0.3)
-    except KeyboardInterrupt:
-        pass
-    
-    clear_console()
-    print("Анимация завершена!")
-
+        print(f"Ошибка при обработке XML: {e}")
 
 if __name__ == "__main__":
-    draw_polish_flag()
-    draw_d_pattern()
-    plot_sqrt_function()
-    analyze_and_plot_averages()
-    
-    # Раскомментируйте для анимации
-    # simple_animation()
-    print("\n" + "-" * 30)
-    print("Чтобы увидеть анимацию, раскомментируйте вызов 'simple_animation()' и запустите код в консоли.")
+    solve_csv_tasks()
+    solve_xml_task()
